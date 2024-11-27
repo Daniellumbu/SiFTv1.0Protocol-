@@ -41,14 +41,17 @@ class SiFT_LOGIN:
 
     def parse_login_req(self, msg_payload):
         try:
-            # Assuming the payload is separated by clear delimiters (e.g., newline or other)
-            
-            # Assuming payload format:
+            # Extract the client_random (last 16 bytes) from the payload
+            # client_random = msg_payload[-4:]  # Last 16 bytes
+            payload_body = msg_payload  # All bytes except the last 16
+
+            # Decode the rest of the payload
+            # Assuming the payload format:
             # Username:<encrypted_username_in_base64>
             # Password:<encrypted_password_in_base64>
-            lines = msg_payload.decode('utf-8').splitlines()
-            username_line = lines[:6]
-            password_line = lines[7:13]
+            lines = payload_body.decode('utf-8').splitlines()
+            username_line = lines[:6]  # Adjust to the appropriate number of lines
+            password_line = lines[7:13]  # Adjust to the appropriate number of lines
             username = '\n'.join(username_line)
             password = '\n'.join(password_line)
 
@@ -56,11 +59,14 @@ class SiFT_LOGIN:
             login_req_struct = {
                 'username': username,
                 'password': password
+                # 'client_random': client_random.hex()  # Convert to hex for easy debugging
             }
 
             return login_req_struct
+
         except (IndexError, UnicodeDecodeError, ValueError) as e:
             raise SiFT_LOGIN_Error(f"Failed to parse login request: {e}")
+
 
 
     # builds a login response from a dictionary
@@ -88,6 +94,7 @@ class SiFT_LOGIN:
 
     # handles login process (to be used by the server)
     def handle_login_server(self):
+        print("We are in login server")
 
         if not self.server_users:
             raise SiFT_LOGIN_Error('User database is required for handling login at server')
@@ -114,10 +121,13 @@ class SiFT_LOGIN:
         request_hash = hash_fn.digest()
 
         login_req_struct = self.parse_login_req(msg_payload)
+        print("yay lets see",login_req_struct)
         try:
             encrypted_username = base64.b64decode(login_req_struct['username'])
             with open('temp_encrypted_username.bin', 'w') as f:
+               
                 f.write(login_req_struct['username'])
+            print("Testing to see what we get",login_req_struct['username'])
             decrypt_message(
                 privkeyfile='test_keypair.pem',
                 input_file='temp_encrypted_username.bin',
